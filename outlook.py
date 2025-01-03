@@ -1,19 +1,14 @@
-from dotenv import load_dotenv
-
-
 import requests
 import json
 import os
 from datetime import datetime, timedelta
-
-load_dotenv()
 
 CLIENT_ID = os.getenv('CLIENT_ID')
 TENANT_ID = os.getenv('TENANT_ID')
 SCOPES = os.getenv('SCOPES')
 TOKEN_FILE = os.getenv('TOKEN_FILE')
 
-# URLs de autenticação
+# Authentication URLs
 DEVICE_CODE_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/devicecode"
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 
@@ -27,12 +22,12 @@ def load_token():
         if os.path.exists(TOKEN_FILE):
             with open(TOKEN_FILE, 'r') as f:
                 token_data = json.load(f)
-                # Verifica se o token ainda é válido (com margem de 5 minutos)
+                # Check if token is still valid (with 5 minutes margin)
                 if datetime.now().timestamp() + 300 < token_data.get('expires_at', 0):
-                    print("Token existente carregado com sucesso!")
+                    print("Existing token loaded successfully!")
                     return token_data.get('access_token')
     except Exception as e:
-        print(f"Erro ao carregar token: {e}")
+        print(f"Error loading token: {e}")
     return None
 
 def get_access_token():
@@ -40,7 +35,7 @@ def get_access_token():
     if token:
         return token
 
-    print("Obtendo novo token...")
+    print("Getting new token...")
     device_code_response = requests.post(
         DEVICE_CODE_URL,
         data={
@@ -50,11 +45,11 @@ def get_access_token():
     )
     
     if device_code_response.status_code != 200:
-        print(f"Erro ao obter código de dispositivo: {device_code_response.text}")
+        print(f"Error getting device code: {device_code_response.text}")
         return None
     
     device_code_data = device_code_response.json()
-    print(f"Acesse {device_code_data['verification_uri']} e insira o código: {device_code_data['user_code']}")
+    print(f"Visit {device_code_data['verification_uri']} and enter the code: {device_code_data['user_code']}")
     
     while True:
         token_response = requests.post(
@@ -69,19 +64,17 @@ def get_access_token():
         token_data = token_response.json()
         
         if 'access_token' in token_data:
-            print("Novo token obtido com sucesso!")
-            save_token(token_data)  # Salva o token para uso futuro
+            print("New token obtained successfully!")
+            save_token(token_data)  # Save token for future use
             return token_data['access_token']
         
         if token_data.get('error') == 'authorization_pending':
             continue
         else:
-            print(f"Erro durante a autenticação: {token_data.get('error_description')}")
+            print(f"Error during authentication: {token_data.get('error_description')}")
             return None
 
-# Exemplo de uso: Acessar os e-mails do Outlook
 def get_emails(token):
-    #url = "https://graph.microsoft.com/v1.0/me/messages"
     url = "https://graph.microsoft.com/v1.0/me/messages?$filter=inferenceClassification eq 'other'"
     headers = {
         'Authorization': f'Bearer {token}'
@@ -91,17 +84,14 @@ def get_emails(token):
     if response.status_code == 200:
         emails = response.json().get('value', [])
         for email in emails:
-            
-            print(f"Assunto: {email['subject']}")
-            print(f"Remetente: {email['from']['emailAddress']['name']}")
-            
+            print(f"Subject: {email['subject']}")
+            print(f"From: {email['from']['emailAddress']['name']}")
     else:
-        print(f"Erro ao buscar e-mails: {response.text}")
-        
+        print(f"Error fetching emails: {response.text}")
 
 def move_to_trash(token):
     try:
-        # URL específica para outros
+        # URL specific for others
         url = "https://graph.microsoft.com/v1.0/me/messages?$filter=inferenceClassification eq 'other'"
         headers = {
             'Authorization': f'Bearer {token}',
@@ -113,7 +103,7 @@ def move_to_trash(token):
         
         while next_link:
             try:
-                # Busca os emails da página atual
+                # Fetch emails from current page
                 response = requests.get(next_link, headers=headers)
                 if response.status_code == 200:
                     data = response.json()
@@ -124,10 +114,9 @@ def move_to_trash(token):
                         sender = email['from']['emailAddress']['name']
                         subject = email['subject']
                         
-                        
                         trash_url = f"https://graph.microsoft.com/v1.0/me/messages/{email_id}/move"
                         
-                        # Mover para pasta "deletedItems" (lixeira)
+                        # Move to "deletedItems" folder (trash)
                         move_response = requests.post(
                             trash_url,
                             headers=headers,
@@ -136,40 +125,39 @@ def move_to_trash(token):
                             }
                         )
                         
-                        if move_response.status_code == 201:  # 201 = Created (sucesso)
-                            print(f"Email movido para lixeira:")
-                            print(f"De: {sender}")
-                            print(f"Assunto: {subject}")
+                        if move_response.status_code == 201:  # 201 = Created (success)
+                            print(f"Email moved to trash:")
+                            print(f"From: {sender}")
+                            print(f"Subject: {subject}")
                             print("-" * 50)
                             total_moved += 1
                         else:
-                            print(f"Erro ao mover email de {sender}: {move_response.text}")
+                            print(f"Error moving email from {sender}: {move_response.text}")
                     
-                    # Verifica se há mais páginas
+                    # Check if there are more pages
                     next_link = data.get('@odata.nextLink')
                     if not next_link:
                         break
                 else:
-                    print(f"Erro ao buscar e-mails: {response.text}")
+                    print(f"Error fetching emails: {response.text}")
                     break
                     
             except KeyboardInterrupt:
-                print("\nOperação interrompida pelo usuário!")
-                print(f"Total de emails movidos até a interrupção: {total_moved}")
+                print("\nOperation interrupted by user!")
+                print(f"Total emails moved until interruption: {total_moved}")
                 return
             
-        print(f"\nTotal de emails movidos para lixeira: {total_moved}")
+        print(f"\nTotal emails moved to trash: {total_moved}")
             
     except KeyboardInterrupt:
-        print("\nOperação interrompida pelo usuário!")
-        print(f"Total de emails movidos até a interrupção: {total_moved}")
+        print("\nOperation interrupted by user!")
+        print(f"Total emails moved until interruption: {total_moved}")
     except Exception as e:
-        print(f"Erro durante a operação: {e}")
-        print(f"Total de emails movidos até o erro: {total_moved}")
+        print(f"Error during operation: {e}")
+        print(f"Total emails moved until error: {total_moved}")
 
-# Fluxo principal
+# Main flow
 if __name__ == "__main__":
     token = get_access_token()
     if token:
-        #get_emails(token)
         move_to_trash(token)
