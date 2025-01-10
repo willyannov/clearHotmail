@@ -125,19 +125,4 @@ This project is an Outlook email manager that automatically moves emails classif
 - The `.gitignore` file is already configured to exclude sensitive files
 - Token is automatically refreshed when expired
 
-## Error Handling
-
-The application includes robust error handling for:
-- Rate limiting (429 errors)
-- Authentication failures
-- Network issues
-- Invalid tokens
-- User interruptions
-
-## Contributing
-
 Feel free to contribute to the project through Pull Requests or by reporting issues.
-
-## License
-
-This project is under the MIT license. See the LICENSE file for more details.
