@@ -7,6 +7,10 @@ This project is an Outlook email manager that automatically moves emails classif
 - Python 3.6 or higher
 - Microsoft account with Outlook access
 - Application registration in Azure Portal
+- Required Python packages:
+  - requests
+  - python-dotenv
+  - time
 
 ## Azure Configuration
 
@@ -49,7 +53,7 @@ This project is an Outlook email manager that automatically moves emails classif
 
 2. Install dependencies:
    ```bash
-   pip install (dependencies)
+   pip install requests python-dotenv
    ```
 
 3. Configure the .env file:
@@ -58,17 +62,31 @@ This project is an Outlook email manager that automatically moves emails classif
    cp .env.example .env
    ```
    - Edit the .env file with your credentials:
-     - CLIENT_ID: Application ID obtained from Azure Portal
-     - TENANT_ID: common (for personal accounts)
-     - SCOPES: https://graph.microsoft.com/Mail.ReadWrite
-     - TOKEN_FILE: outlook_token.json
+     ```
+     CLIENT_ID=your_client_id_here
+     TENANT_ID=common
+     SCOPES=https://graph.microsoft.com/Mail.ReadWrite
+     TOKEN_FILE=outlook_token.json
+     ```
 
-4. Run the script:
+4. Configure email filters (optional):
+   - Edit `filter_config.py` to add or remove email senders that should not be moved to trash
+   - The default list includes common job sites and development platforms
+   - Add new senders following the existing format:
+     ```python
+     PRESERVED_SENDERS = [
+         'LinkedIn',
+         'GitHub',
+         # Add more senders here
+     ]
+     ```
+
+5. Run the script:
    ```bash
    python outlook.py
    ```
 
-5. On first run:
+6. On first run:
    - The script will generate an authentication code
    - Access the provided link
    - Log in with your Microsoft account
@@ -78,15 +96,22 @@ This project is an Outlook email manager that automatically moves emails classif
 
 - Automatic authentication with Microsoft Graph
 - Access token caching to avoid repeated authentication
-- Moves emails classified as "other" to trash
-- Shows real-time progress
+- Moves emails to trash with configurable filters
+- Email sender whitelist to preserve important messages
+- Shows real-time progress with detailed information
+- Rate limiting protection with automatic retry
 - Allows safe interruption with Ctrl+C
+- Supports pagination for large email lists
 
 ## Project Structure
 
 ```
 .
-├── outlook.py          # Main script
+├── outlook.py          # Main script with menu interface
+├── email_operations.py # Email handling operations
+├── auth.py            # Authentication functions
+├── config.py          # Configuration and environment setup
+├── filter_config.py   # Email filter settings
 ├── .env               # Sensitive settings (not versioned)
 ├── .env.example       # Configuration example
 ├── .gitignore         # Files ignored by git
@@ -98,6 +123,16 @@ This project is an Outlook email manager that automatically moves emails classif
 - Never share your `.env` or `outlook_token.json` files
 - Keep your CLIENT_ID secure
 - The `.gitignore` file is already configured to exclude sensitive files
+- Token is automatically refreshed when expired
+
+## Error Handling
+
+The application includes robust error handling for:
+- Rate limiting (429 errors)
+- Authentication failures
+- Network issues
+- Invalid tokens
+- User interruptions
 
 ## Contributing
 
